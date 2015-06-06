@@ -7,7 +7,7 @@
     "start": "node index.js",
     "test": "cd WWW && gulp test",
     "preinstall": "echo 'Preparing to install'",
-    "postinstall": "cd WWW && gulp js"
+    "postinstall": "cd WWW && npm install && gulp js"
   },
   "dependencies": {
     "express": "~4.9.x",
