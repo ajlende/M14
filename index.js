@@ -1,51 +1,92 @@
+var bodyParser = require('body-parser');
+
 var express = require('express');
 var app = express();
-var mongodb = require('mongodb');
+var router = express.Router();
 
-var MongoClient = mongodb.MongoClient;
+var mongoose = require('mongoose');
+var ObjectId = mongoose.Types.ObjectId;
+
+// Models
+var User = require('./app/models/user');
+
+mongoose.connect(process.env.MONGOLAB_URI);
 
 app.set('port', (process.env.PORT || 5000));
+
 app.use(express.static(__dirname + '/WWW'));
 
-app.get('/mongo', function (request, response) {
-  console.log(process.env);
-  MongoClient.connect(process.env.MONGOLAB_URI, function(err, db) {
-    if (err) {
-      console.log('Unable to connect to the mongoDB server. Error:', err);
-      response.send('Unable to connect to the mongoDB server. Error: ' + err);
-    } else {
-      console.log('Connection established');
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-      var collection = db.collection('users');
+app.use('/api', router);
 
-      collection.find({name: 'ajlende'}).toArray(function (err, result) {
-        if (err) {
-          console.log('Error finding ajlende');
-          db.close();
-          response.send('Error finding ajlende ' + err);
-        } else if (result.length) {
-          console.log(result);
-          db.close();
-          response.send(result);
-        } else {
-          console.log('"ajlende" not found. Adding him.');
-          var ajlende = {name: 'ajlende', usename: 'ajlende', pasword: 'abc123', email: 'ajlende@gmail.com', userID: 0, connections: []}
-          collection.insert([ajlende], function(err, result) {
-            if (err) {
-              console.log('There was an error adding "ajlende"');
-              db.close();
-              response.send('There was an error adding "ajlende"');
-            } else {
-              console.log('Added ajlende to users collection');
-              db.close();
-              response.send('Added ajlende to users collection');
-            }
-          });
-        }
-      });
+router.route('/users')
 
-    }
+  /// Create a user 
+  /// POST http://m14.herokuapp.com/api/users
+  .post(function(req, res) {
+    var user = new User();
+    user.nameFirst = req.body.nameFirst;
+    user.nameLast = req.body.nameLast;
+    user.username = req.body.username;
+    user.email = req.body.email;
+    user.password = req.body.password;
+    user._id = new ObjectId;
+    user.save(function(err) {
+      if (err) res.send(err);
+      res.json(user);
+    });
+  })
+
+  /// Get all users.
+  /// GET http://m14.herokuapp.com/api/users
+  .get(function(req, res) {
+    User.find(function(err, users) {
+      if (err) res.send(err);
+      res.json(users);
+    });
   });
+
+router.route('/users/:user_id')
+
+  /// Get a user with an id
+  /// GET http://m14.herokuapp.com/api/users/:user_id
+  .get(function(req, res) {
+    User.findById(req.params.user_id, function(err, user) {
+      if (err) res.send(err);
+      res.json(user);
+    });
+  })
+
+  /// Update a user with an id
+  /// PUT http://m14.herokuapp.com/api/users/:user_id
+  .put(function(req, res) {
+    User.findById(req.params.user_id, function(err, user) {
+      if (err) res.send(err);
+      user.nameFirst = req.body.nameFirst || user.nameFirst;
+      user.nameLast = req.body.nameLast || user.nameLast;
+      user.username = req.body.username || user.username;
+      user.email = req.body.email || user.email;
+      user.password = req.body.password || user.password;
+      user.save(function(err) {
+        if (err) res.send(err);
+        res.json(user);
+      });
+    });
+  })
+
+  /// Update a user with an id
+  /// DELETE http://m14.herokuapp.com/api/users/:user_id
+  .delete(function(req, res) {
+    User.remove({_id: req.params.user_id}, function(err, user) {
+      if (err) res.send(err);
+      res.json(user);
+    });
+  });
+
+router.get('/', function(req, res) {
+  res.json({message: 'This is the M14 api!'});
 });
 
 app.listen(app.get('port'), function() {
